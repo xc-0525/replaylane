@@ -30,6 +30,7 @@ async function loadTasks() {
   }
   for (const t of rows) {
     const li = el("li");
+    li.dataset.taskId = t.task_id;
     if (t.task_id === state.selected) li.classList.add("active");
     const prog = t.progress || 0;
     const cls = t.status === "SUCCEEDED" ? "bar done" : t.status === "FAILED" ? "bar fail" : "bar";
@@ -61,8 +62,8 @@ async function loadStats() {
 
 async function selectTask(id) {
   state.selected = id;
-  document.querySelectorAll("#task-list li").forEach((li, i) => {
-    li.classList.toggle("active", state.tasks[i] && state.tasks[i].task_id === id);
+  document.querySelectorAll("#task-list li").forEach((li) => {
+    li.classList.toggle("active", li.dataset.taskId === id);
   });
   await loadDetail();
   await loadEvents(true);

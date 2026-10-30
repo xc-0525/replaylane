@@ -25,7 +25,7 @@ python -m replaylane.cli serve --port 8000     # 打开 http://localhost:8000
 ```bash
 python -m replaylane.cli serve --port 8000      # 服务 + 2 个 worker 子进程
 python -m replaylane.cli demo                   # 或者：命令行跑一个完整任务
-python -m unittest discover -s tests -t .       # 6 个测试文件，含 kill -9 恢复
+python -m unittest discover -s tests -t .       # 5 个测试文件 / 22 个用例，含 kill -9 恢复
 python -m replaylane.cli verify                 # 用事件重放校验投影是否一致
 ```
 
@@ -47,7 +47,7 @@ scheduler / sweeper 是三个独立进程，应用内线程池管不到跨进程
 
 时间规划按"先让失败可见，再让成功好看"排：schema 与状态机 4h → 调度与执行 5h →
 worker/sweeper 4h → 看板 6h → 故障注入与断言 4h → 文档与录屏 4h，另留 2h 缓冲。
-实际代码 **3015 行**（不含 411 行测试），与设计的 3070 行预算基本吻合。
+实际代码 **3010 行**（不含 411 行测试），与设计的 3070 行预算基本吻合。
 
 > 详细推导见 [`docs/01-架构与边界设计.md`](docs/01-架构与边界设计.md)（第 1 章）。
 

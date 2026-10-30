@@ -327,8 +327,11 @@ class Handler(BaseHTTPRequestHandler):
                     _subs.remove(q)
 
     def _write_sse(self, evt: dict) -> None:
+        # 只发 id + data，不发 `event:` 字段。
+        # 一旦带上命名事件，浏览器的 EventSource.onmessage 就永远收不到（要走 addEventListener），
+        # 而事件类型本来就在 JSON 里，没必要再用 SSE 的字段分频道。
         payload = json.dumps(evt, ensure_ascii=False)
-        chunk = f"id: {evt['seq']}\nevent: {evt['type']}\ndata: {payload}\n\n"
+        chunk = f"id: {evt['seq']}\ndata: {payload}\n\n"
         self.wfile.write(chunk.encode("utf-8"))
         self.wfile.flush()
 
