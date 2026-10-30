@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>replaylane · 可观测任务执行管线</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <h1>replaylane <small>可观测、可恢复的任务执行管线</small></h1>
+  <div class="chips" id="chips"></div>
+</header>
+
+<main>
+  <div class="stack">
+    <section class="card">
+      <h2>提交任务</h2>
+      <form id="submit-form">
+        <label>素材
+          <input type="text" name="source" value="demo_shot.mp4">
+        </label>
+        <label>风格
+          <select name="style">
+            <option value="ghibli_v2">ghibli_v2</option>
+            <option value="ink_wash">ink_wash</option>
+            <option value="cyberpunk">cyberpunk</option>
+          </select>
+        </label>
+        <label>seed（留空 = 由参数派生，同参数必命中缓存）
+          <input type="number" name="seed" placeholder="auto">
+        </label>
+        <div class="faults">
+          <label><input type="checkbox" name="f_retry"> matting 连续失败 2 次（可重试）</label>
+          <label><input type="checkbox" name="f_kill"> restyle 跑到 45% 时 kill -9</label>
+          <label><input type="checkbox" name="f_oom"> matting 第一次 OOM（降级）</label>
+          <label><input type="checkbox" name="f_human"> qc_review 需人工介入</label>
+        </div>
+        <button type="submit">提交</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>任务 <span class="right dim" id="task-count"></span></h2>
+      <ul class="tasks" id="task-list"></ul>
+    </section>
+  </div>
+
+  <div class="stack">
+    <section class="card" id="detail-card">
+      <h2>任务详情 <span class="right dim" id="detail-id">未选择</span></h2>
+      <div class="empty" id="detail-empty">左侧选择一个任务，或先提交一个。</div>
+      <div id="detail-body" style="display:none">
+        <div class="gantt" id="gantt"></div>
+        <div class="axis"><div></div><div class="ticks" id="ticks"></div></div>
+        <div class="legend">
+          <span><i style="background:var(--running)"></i>执行中</span>
+          <span><i style="background:var(--queued)"></i>排队 / 等显存</span>
+          <span><i style="background:var(--backoff)"></i>退避等待</span>
+          <span><i style="background:var(--attention)"></i>待人处理</span>
+          <span><i style="background:var(--ok)"></i>成功</span>
+          <span><i style="background:var(--cached)"></i>缓存命中</span>
+          <span><i style="background:var(--failed)"></i>失败</span>
+        </div>
+        <table>
+          <thead><tr>
+            <th>步骤</th><th>状态</th><th class="num">尝试</th><th class="num">token</th>
+            <th>variant</th><th class="num">进度</th><th>digest</th><th></th>
+          </tr></thead>
+          <tbody id="step-rows"></tbody>
+        </table>
+        <div id="attempts-wrap"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>事件流 <span class="right dim">SSE · 可断线重连</span></h2>
+      <ul class="events" id="events"></ul>
+      <div class="hint">每条事件都能指回一次状态变化；甘特图上每一段都由这里的事件推导。</div>
+    </section>
+  </div>
+</main>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
