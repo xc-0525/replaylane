@@ -34,7 +34,7 @@ python -m replaylane.cli serve --port 8000     # 打开 http://localhost:8000
 ```bash
 python -m replaylane.cli serve --port 8000      # 服务 + 2 个 worker 子进程
 python -m replaylane.cli demo                   # 或者：命令行跑一个完整任务
-python -m unittest discover -s tests -t .       # 5 个测试文件 / 22 个用例，含 kill -9 恢复
+python -m unittest discover -s tests -t .       # 6 个测试文件 / 34 个用例，含 kill -9 恢复与接口路由
 python -m replaylane.cli verify                 # 用事件重放校验投影是否一致
 ```
 
