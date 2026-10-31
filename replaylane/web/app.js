@@ -221,7 +221,13 @@ function showAttempts(stepName) {
 
 async function retryStep(name) {
   const r = await fetch(`/api/tasks/${state.selected}/steps/${name}/retry`, { method: "POST" });
-  if (!r.ok) alert("当前状态不允许重试");
+  if (!r.ok) {
+    // 把后端给的原因显示出来：404 是路由/对象不存在，409 才是状态不允许
+    let msg = `HTTP ${r.status}`;
+    try { const j = await r.json(); if (j.error) msg = j.error; } catch { /* 空响应 */ }
+    alert(r.status === 409 ? `当前状态不允许重试（${msg}）` : `重试失败：${msg}`);
+    return;
+  }
   await loadDetail();
 }
 

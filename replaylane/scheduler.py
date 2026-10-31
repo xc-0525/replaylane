@@ -190,13 +190,20 @@ def wake(store) -> int:
 
     # 排队中但显存还没批下来的，每轮重试一次准入（这就是"等待 GPU"那段灰条）
     for r in store.q(
-            "SELECT sr.step_run_id, sr.gpu_mb, sr.fencing_token, t.params_json"
+            "SELECT sr.step_run_id, sr.step_name, sr.gpu_mb, sr.fencing_token"
             "  FROM step_run sr JOIN task t ON t.task_id=sr.task_id"
-            " WHERE sr.status='QUEUED' AND sr.gpu_ready=0 AND sr.gpu_mb>0"
+            " WHERE sr.status='QUEUED' AND sr.gpu_ready=0"
             "   AND t.status IN ('QUEUED','RUNNING')"):
-        s = STEP_BY_NAME.get(
-            store.scalar("SELECT step_name FROM step_run WHERE step_run_id=?",
-                         (r["step_run_id"],)) or "")
+        if not r["gpu_mb"]:
+            # 不需要显存的步骤没有"等批文"这回事，直接放行。
+            # 少了这一条，人工重试过的非 GPU 步骤会永久卡在队列里——
+            # 因为重试时把 gpu_ready 清成了 0，而这里原先只处理 gpu_mb>0。
+            with store.tx() as c:
+                store.cas(c, "UPDATE step_run SET gpu_ready=1"
+                             " WHERE step_run_id=? AND status='QUEUED' AND gpu_ready=0",
+                          (r["step_run_id"],))
+            continue
+        s = STEP_BY_NAME.get(r["step_name"])
         if s is None:
             continue
         gpu.admit(store, r["step_run_id"], r["gpu_mb"], s.gpu_mode, r["fencing_token"])
