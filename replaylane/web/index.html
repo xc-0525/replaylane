@@ -20,6 +20,7 @@
         <label>素材
           <input type="text" name="source" value="demo_shot.mp4">
         </label>
+        <div class="hint" style="padding:0">同样的素材 + 风格 + seed 会直接命中缓存（0 秒，不执行）。想看到执行过程，改个素材名或勾选下面的故障。</div>
         <label>风格
           <select name="style">
             <option value="ghibli_v2">ghibli_v2</option>
@@ -51,6 +52,7 @@
       <h2>任务详情 <span class="right dim" id="detail-id">未选择</span></h2>
       <div class="empty" id="detail-empty">左侧选择一个任务，或先提交一个。</div>
       <div id="detail-body" style="display:none">
+        <div class="notice" id="notice" style="display:none"></div>
         <div class="gantt" id="gantt"></div>
         <div class="axis"><div></div><div class="ticks" id="ticks"></div></div>
         <div class="legend">

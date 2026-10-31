@@ -83,6 +83,7 @@ async function loadDetail() {
 
   $("#detail-empty").style.display = "none";
   $("#detail-body").style.display = "block";
+  renderNotice(detail.steps);
   const t = detail.task;
   $("#detail-id").innerHTML =
     `<span class="st ${esc(t.status)}">${esc(t.status)}</span>
@@ -94,6 +95,27 @@ async function loadDetail() {
 
 const stepLabel = (s) => (s.spec && s.spec.label) || s.step_name;
 const stepDesc = (s) => (s.spec && s.spec.desc) || "";
+
+function renderNotice(steps) {
+  const box = $("#notice");
+  const cached = steps.filter((s) => s.status === "CACHED").length;
+  const total = steps.length;
+  const executed = steps.filter((s) => s.status !== "CACHED" && s.status !== "BLOCKED").length;
+  if (cached === total) {
+    // 零执行的任务在甘特上是空的，不解释一句会让人以为系统没反应
+    box.style.display = "flex";
+    box.className = "notice ok";
+    box.innerHTML = `<b>全部 ${total} 步命中缓存</b>
+      <span>这次没有执行任何计算，产物直接复用（0 秒完成）。想看到执行过程：换个素材名、换个风格或 seed，或者勾选一个故障注入。</span>`;
+  } else if (cached > 0) {
+    box.style.display = "flex";
+    box.className = "notice ok";
+    box.innerHTML = `<b>${cached} 步命中缓存</b>
+      <span>其余 ${executed} 步实际执行。绿色 CACHED 的步骤没有消耗算力。</span>`;
+  } else {
+    box.style.display = "none";
+  }
+}
 
 function renderGantt() {
   const segs = (state.timeline && state.timeline.segments) || [];

@@ -176,5 +176,14 @@ ul.events .ty.ok { color: var(--ok); }
 .attempts { padding: 0; }
 .attempts td { font-family: var(--mono); font-size: 11px; }
 .empty { padding: 18px 14px; color: var(--muted); font-size: 12px; }
+
+.notice {
+  display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap;
+  padding: 10px 14px; font-size: 12px; line-height: 1.65;
+  border-bottom: 1px solid var(--line);
+}
+.notice.ok { background: #eafaf4; color: #085041; border-bottom-color: #9fe1cb; }
+.notice b { font-weight: 600; white-space: nowrap; }
+.notice span { color: #0f6e56; }
 .stack { display: grid; gap: 14px; }
 .hint { font-size: 11px; color: var(--muted); padding: 0 14px 12px; }
