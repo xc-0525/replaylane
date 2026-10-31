@@ -133,15 +133,21 @@ function renderGantt() {
     const mine = segs.filter((s) => s.step === st.step_name);
     for (const s of mine) {
       const w = Math.max(0, pct(s.t1) - pct(s.t0));
+      // 降级跑出来的执行段用斜纹标出来：同一道工序、换了跑法
+      const degraded = s.type === "running" && s.variant && s.variant !== "base";
+      const cls = degraded ? "running degraded" : s.type;
+      const tip = `${s.type}${degraded ? " · " + s.variant : ""}` +
+                  `  ${(s.t0 / 1000).toFixed(1)}s → ${(s.t1 / 1000).toFixed(1)}s`;
       if (w < 0.15) {
-        const m = el("div", `gmark ${s.type}`);
+        const m = el("div", `gmark ${cls}`);
         m.style.left = pct(s.t0) + "%";
+        m.title = tip;
         track.appendChild(m);
       } else {
-        const b = el("div", `gseg ${s.type}`);
+        const b = el("div", `gseg ${cls}`);
         b.style.left = pct(s.t0) + "%";
         b.style.width = w + "%";
-        b.title = `${s.type}  ${(s.t0 / 1000).toFixed(1)}s → ${(s.t1 / 1000).toFixed(1)}s`;
+        b.title = tip;
         track.appendChild(b);
       }
     }
@@ -172,7 +178,7 @@ function renderSteps() {
       <td><span class="st ${esc(s.status)}">${esc(s.status)}</span></td>
       <td class="num">${s.attempt_no > 1 ? `<span class="att" title="重试过">${s.attempt_no}</span>` : s.attempt_no}</td>
       <td class="num">${s.fencing_token > 1 ? `<span class="att" title="换过执行者">${s.fencing_token}</span>` : s.fencing_token}</td>
-      <td class="mono dim">${esc(s.variant)}</td>
+      <td class="mono ${s.variant && s.variant !== "base" ? "att" : "dim"}">${esc(s.variant)}</td>
       <td class="num">${s.status === "RUNNING" ? p + "%" : s.status === "SUCCEEDED" || s.status === "CACHED" ? "100%" : "—"}</td>
       <td class="mono dim">${esc((s.output_digest || "").slice(0, 10))}</td>
       <td>${canRetry ? `<button class="tiny ghost" data-step="${esc(s.step_name)}">重试</button>` : ""}</td>`;

@@ -21,6 +21,7 @@ STEP_EVENTS = {
     "step.requeued": "QUEUED",
     "step.claimed": "RUNNING",
     "step.retrying": "RETRY_WAIT",
+    "step.degraded": "QUEUED",      # 换档位后立刻回到队列
     "step.attention": "ATTENTION",
     "step.succeeded": "SUCCEEDED",
     "step.cached": "CACHED",

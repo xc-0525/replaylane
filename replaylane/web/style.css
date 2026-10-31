@@ -135,6 +135,11 @@ ul.tasks li.active { background: #eef4ff; border-color: #c7d8fb; }
 .gtrack { position: relative; height: 14px; background: #f3f5f7; border-radius: 4px; }
 .gseg { position: absolute; top: 0; height: 14px; border-radius: 3px; }
 .gseg.running { background: var(--running); }
+/* 降级运行：同一道工序换了跑法，不是失败也不是等待 */
+.gseg.running.degraded {
+  background: repeating-linear-gradient(45deg, #ef9f27, #ef9f27 3px, #faeeda 3px, #faeeda 6px);
+}
+.gmark.degraded { background: #ef9f27; }
 .gseg.queued { background: var(--queued); }
 .gseg.ready { background: var(--ready); }
 .gseg.backoff {

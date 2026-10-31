@@ -76,6 +76,7 @@ _SEG = {
     "step.claimed": "running",
     "step.retrying": "backoff",
     "step.requeued": "queued",
+    "step.degraded": "degraded",
     "step.attention": "attention",
     "step.succeeded": "ok",
     "step.cached": "cached",
@@ -124,6 +125,22 @@ def timeline(store: Store, task_id: str) -> dict:
         kind = _SEG.get(e["type"])
         if kind is None:
             continue
+
+        # 降级：失败一次、换个档位立刻重排。它没有"等待"，所以必须画成标记，
+        # 否则图上就是一条连续的蓝条，看不出中间换过跑法。
+        if kind == "degraded":
+            cur = open_seg.pop(sid, None)
+            if cur is not None:
+                cur["t1"] = e["mono_ms"]
+                segs.append(cur)
+            p = loads(e["payload_json"], {}) or {}
+            segs.append({"step": names[sid], "type": "degraded", "t0": e["mono_ms"],
+                         "t1": e["mono_ms"], "seq": e["seq"],
+                         "variant": p.get("detail")})
+            open_seg[sid] = {"step": names[sid], "type": "queued",
+                             "t0": e["mono_ms"], "t1": e["mono_ms"], "seq": e["seq"]}
+            continue
+
         cur = open_seg.pop(sid, None)
         if cur is not None:
             cur["t1"] = e["mono_ms"]
@@ -133,8 +150,12 @@ def timeline(store: Store, task_id: str) -> dict:
                 continue
             segs.append(cur)
         if kind in _OPENERS:
-            open_seg[sid] = {"step": names[sid], "type": kind,
-                             "t0": e["mono_ms"], "t1": e["mono_ms"], "seq": e["seq"]}
+            seg = {"step": names[sid], "type": kind, "t0": e["mono_ms"],
+                   "t1": e["mono_ms"], "seq": e["seq"]}
+            if kind == "running":
+                # 这一段是用哪个档位跑的？降级跑出来的要画成另一种颜色。
+                seg["variant"] = (loads(e["payload_json"], {}) or {}).get("variant")
+            open_seg[sid] = seg
         else:
             segs.append({"step": names[sid], "type": kind, "t0": e["mono_ms"],
                          "t1": e["mono_ms"], "seq": e["seq"]})
