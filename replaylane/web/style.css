@@ -145,6 +145,10 @@ ul.tasks li.active { background: #eef4ff; border-color: #c7d8fb; }
 .gseg.cached { background: var(--cached); }
 .gseg.failed { background: var(--failed); }
 .gseg.cancelled { background: var(--cancelled); }
+/* 崩溃后到被回收之间的空窗：不是执行，也不是排队，是"没人知道它在干什么" */
+.gseg.dead {
+  background: repeating-linear-gradient(45deg, #f09595, #f09595 3px, #fcebeb 3px, #fcebeb 6px);
+}
 .gmark { position: absolute; top: -2px; width: 3px; height: 18px; border-radius: 1px; }
 .gmark.failed { background: var(--failed); }
 .gmark.cancelled { background: var(--cancelled); }
@@ -161,6 +165,7 @@ td.mono, .mono { font-family: var(--mono); }
 td.num { text-align: right; font-family: var(--mono); }
 .sname { font-size: 12px; color: var(--ink); }
 .sen { font: 10px/1.3 var(--mono); color: var(--muted); }
+.att { color: #ba7517; font-weight: 600; }
 tbody tr:hover { background: #fafbfc; }
 .dim { color: var(--muted); }
 

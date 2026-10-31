@@ -102,11 +102,27 @@ def timeline(store: Store, task_id: str) -> dict:
     open_seg: dict[str, dict] = {}
     segs: list[dict] = []
     for e in evs:
-        kind = _SEG.get(e["type"])
-        if kind is None:
-            continue
         sid = e["step_run_id"]
         if sid not in names:
+            continue
+
+        # 崩溃：把"执行中"切断在它真正停止响应的那一刻（最后一次心跳），
+        # 之后到被回收之间是一段"死掉的空窗"，必须单独画出来，
+        # 否则整段死寂会被算进执行时长，图上看起来就像正常跑完了。
+        if e["type"] == "lease.expired":
+            cur = open_seg.pop(sid, None)
+            if cur is not None:
+                p = loads(e["payload_json"], {}) or {}
+                silence = int(p.get("silent_ms") or (float(p.get("ttl_s", 15)) * 1000))
+                cut = max(cur["t0"], e["mono_ms"] - silence)
+                cur["t1"] = cut
+                segs.append(cur)
+                open_seg[sid] = {"step": names[sid], "type": "dead",
+                                 "t0": cut, "t1": e["mono_ms"], "seq": e["seq"]}
+            continue
+
+        kind = _SEG.get(e["type"])
+        if kind is None:
             continue
         cur = open_seg.pop(sid, None)
         if cur is not None:

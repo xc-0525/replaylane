@@ -54,6 +54,9 @@ def reclaim_expired(store, ttl_s: float = TTL_S) -> int:
                                  "worker": lease["worker_id"],
                                  "fencing_token": lease["fencing_token"],
                                  "ttl_s": ttl_s,
+                                 # 从"最后一次心跳"到"被判定死亡"隔了多久。
+                                 # 没有这个数，甘特图只能把这段死寂画成执行中。
+                                 "silent_ms": int(age_s(lease["last_beat"]) * 1000),
                                  "action": "requeued" if target == "QUEUED" else "cancelled"})
             # 状态变化必须同时有一条 step 级事件，否则投影重建不出来。
             # lease.expired 说明"为什么"，这条说明"变成了什么"。

@@ -170,8 +170,8 @@ function renderSteps() {
       <td><div class="sname">${esc(stepLabel(s))}</div>
           <div class="sen">${esc(s.step_name)}</div></td>
       <td><span class="st ${esc(s.status)}">${esc(s.status)}</span></td>
-      <td class="num">${s.attempt_no}</td>
-      <td class="num">${s.fencing_token}</td>
+      <td class="num">${s.attempt_no > 1 ? `<span class="att" title="重试过">${s.attempt_no}</span>` : s.attempt_no}</td>
+      <td class="num">${s.fencing_token > 1 ? `<span class="att" title="换过执行者">${s.fencing_token}</span>` : s.fencing_token}</td>
       <td class="mono dim">${esc(s.variant)}</td>
       <td class="num">${s.status === "RUNNING" ? p + "%" : s.status === "SUCCEEDED" || s.status === "CACHED" ? "100%" : "—"}</td>
       <td class="mono dim">${esc((s.output_digest || "").slice(0, 10))}</td>
