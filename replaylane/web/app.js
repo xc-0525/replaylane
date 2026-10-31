@@ -37,9 +37,10 @@ async function loadTasks() {
     li.innerHTML = `
       <div class="trow">
         <span class="st ${esc(t.status)}">${esc(t.status)}</span>
-        <span class="tid">${esc(t.task_id.slice(-8))}</span>
+        <span class="tname" title="${esc(t.task_id)}">${esc(t.name || t.task_id.slice(-8))}</span>
         <span class="tmeta">${prog}%</span>
       </div>
+      <div class="tsub">${esc(t.task_id.slice(-8))}</div>
       <div class="${cls}"><i style="width:${prog}%"></i></div>`;
     li.onclick = () => selectTask(t.task_id);
     ul.appendChild(li);
@@ -87,7 +88,8 @@ async function loadDetail() {
   const t = detail.task;
   $("#detail-id").innerHTML =
     `<span class="st ${esc(t.status)}">${esc(t.status)}</span>
-     <span class="mono" style="margin-left:8px">${esc(t.task_id)}</span>
+     <span class="dname">${esc(t.name || t.task_id.slice(-8))}</span>
+     <span class="dim mono" style="font-size:11px">${esc(t.task_id.slice(-8))}</span>
      <span style="margin-left:8px">进度 ${t.progress}%</span>`;
   renderGantt();
   renderSteps();
@@ -333,6 +335,7 @@ $("#submit-form").onsubmit = async (ev) => {
   const body = {
     params: { source: f.source.value, style: f.style.value, faults },
   };
+  if (f.name.value.trim()) body.params.name = f.name.value.trim();
   if (f.seed.value) body.params.nondet_seed = Number(f.seed.value);
   const r = await fetch("/api/tasks", {
     method: "POST",

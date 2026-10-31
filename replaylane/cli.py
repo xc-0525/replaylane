@@ -77,6 +77,9 @@ def _build_params(args) -> dict:
     source = getattr(args, "source", None)
     if source:
         params["source"] = source
+    name = getattr(args, "name", None)
+    if name:
+        params["name"] = name
     if getattr(args, "human_gate", False):
         params["auto_approve"] = False
     elif getattr(args, "auto_approve", False):
@@ -267,6 +270,7 @@ def main(argv=None) -> int:
     d.add_argument("--source", default=None, help="素材名，换一个等于换一个新任务（不会命中上次的缓存）")
     d.add_argument("--human-gate", action="store_true",
                    help="人工环节真的停下来等人（默认自动通过，方便一键演示）")
+    d.add_argument("--name", default=None, help="任务名，只给人看，不影响缓存")
     d.add_argument("--seed", type=int, default=None)
     d.set_defaults(func=cmd_demo)
 
@@ -286,6 +290,7 @@ def main(argv=None) -> int:
     sb.add_argument("--source", default=None)
     sb.add_argument("--auto-approve", action="store_true",
                     help="人工环节自动通过（默认会停在 ATTENTION 等人）")
+    sb.add_argument("--name", default=None, help="任务名，只给人看，不影响缓存")
     sb.add_argument("--seed", type=int, default=None)
     sb.add_argument("--priority", type=int, default=5)
     sb.set_defaults(func=cmd_submit)

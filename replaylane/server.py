@@ -271,6 +271,7 @@ class Handler(BaseHTTPRequestHandler):
             d = dict(r)
             d["progress"] = task_progress(self.store, r["task_id"])
             d["params"] = loads(r["params_json"], {})
+            d["name"] = d["params"].get("name") or r["task_id"][-8:]
             del d["params_json"]
             out.append(d)
         self._json(out)
@@ -289,8 +290,10 @@ class Handler(BaseHTTPRequestHandler):
                 "SELECT * FROM step_run WHERE task_id=? ORDER BY rowid", (task_id,))]
             for s in steps:
                 s["spec"] = dict(STEP_BY_NAME[s["step_name"]].__dict__)
+            tparams = loads(t["params_json"], {})
             return self._json({"task": {**dict(t), "progress": task_progress(self.store, task_id),
-                                        "params": loads(t["params_json"], {})},
+                                        "params": tparams,
+                                        "name": tparams.get("name") or task_id[-8:]},
                                "steps": steps})
 
         if rest == ["events"]:
@@ -400,6 +403,8 @@ class Handler(BaseHTTPRequestHandler):
             body = self._body()
             if path == "/api/tasks":
                 params = body.get("params") or {}
+                if body.get("name"):
+                    params["name"] = body["name"]
                 if isinstance(params.get("faults"), str):
                     params["faults"] = json.loads(params["faults"])
                 tid = scheduler.submit(self.store, params,

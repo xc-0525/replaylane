@@ -160,6 +160,32 @@ class TestTaskLifecycle(APITestCase):
         self.assertEqual(code, 409, "只有停在 ATTENTION 的步骤才能被通过")
         self.assertFalse(body["ok"])
 
+    def test_task_name_does_not_affect_cache_key(self):
+        """名字只给人看：改了名字，指纹不该变，缓存还应该命中。"""
+        a = self.new_task("api_name.mp4")
+        self.req("POST", "/api/tasks", {"params": {"source": "api_name.mp4", "name": "第一次"}})
+        ka = {r["step_name"]: r["step_key"] for r in
+              self.store.q("SELECT step_name, step_key FROM step_run WHERE task_id=?", (a,))}
+        b = self.new_task("api_name.mp4")
+        kb = {r["step_name"]: r["step_key"] for r in
+              self.store.q("SELECT step_name, step_key FROM step_run WHERE task_id=?", (b,))}
+        self.assertEqual(ka, kb, "名字进了 step_key，缓存会无谓失效")
+
+    def test_custom_name_is_returned(self):
+        code, body = self.req("POST", "/api/tasks",
+                              {"params": {"source": "api_name2.mp4"}, "name": "片头重绘"})
+        self.assertEqual(code, 201)
+        tid = body["task_id"]
+        code, body = self.req("GET", f"/api/tasks/{tid}")
+        self.assertEqual(body["task"]["name"], "片头重绘")
+        code, body = self.req("GET", "/api/tasks?limit=5")
+        self.assertIn("片头重绘", [t["name"] for t in body])
+
+    def test_default_name_comes_from_params(self):
+        tid = self.new_task("api_name3.mp4")
+        code, body = self.req("GET", f"/api/tasks/{tid}")
+        self.assertIn("api_name3", body["task"]["name"])
+
     def test_cancel_marks_flag_and_cascades(self):
         tid = self.new_task("api_life5.mp4")
         code, body = self.req("POST", f"/api/tasks/{tid}/cancel")

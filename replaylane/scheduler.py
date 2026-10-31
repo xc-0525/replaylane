@@ -37,6 +37,12 @@ def submit(store, params: dict | None = None, priority: int = 5,
         seed = int(hashlib.sha256(dumps(canonical_params(params)).encode()).hexdigest()[:8], 16)
     params["nondet_seed"] = seed
 
+    # 任务名只为了人看。它不进 step_key，所以改名字不会让缓存失效。
+    if not params.get("name"):
+        base = os.path.splitext(str(params.get("source") or "task"))[0]
+        style = params.get("style")
+        params["name"] = f"{base} · {style}" if style else base
+
     task_id = new_id("T")
     with store.tx() as c:
         c.execute(
