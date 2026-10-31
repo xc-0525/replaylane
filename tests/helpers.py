@@ -60,7 +60,11 @@ class Cluster:
             time.sleep(0.2)
 
     def run(self, params: dict | None = None, timeout: float = 60.0) -> tuple[str, str]:
-        tid = scheduler.submit(self.store, params or {})
+        # 默认让人工环节自动通过：多数用例关心的是调度/重试/缓存，
+        # 不是"停在闸门前等人"。要测闸门本身，显式传 auto_approve=False。
+        params = dict(params or {})
+        params.setdefault("auto_approve", True)
+        tid = scheduler.submit(self.store, params)
         deadline = time.time() + timeout
         while time.time() < deadline:
             st = self.store.scalar("SELECT status FROM task WHERE task_id=?", (tid,))

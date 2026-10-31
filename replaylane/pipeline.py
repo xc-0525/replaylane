@@ -16,7 +16,8 @@ from .db import dumps
 
 # 这些 key 不参与缓存键：它们描述「怎么跑」，不描述「跑什么」。
 # 漏掉任何一个影响输出的字段都会导致缓存投毒（9.3 第 5 条），所以这里是白名单式排除。
-NON_SEMANTIC_KEYS = frozenset({"faults", "nondet_seed", "priority", "note", "fail_step"})
+NON_SEMANTIC_KEYS = frozenset({"faults", "nondet_seed", "priority", "note", "fail_step",
+                               "auto_approve"})
 
 
 @dataclass(frozen=True)

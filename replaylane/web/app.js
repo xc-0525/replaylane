@@ -189,7 +189,9 @@ function renderSteps() {
   for (const s of state.steps) {
     const tr = el("tr");
     const p = s.progress_total ? Math.round((s.progress_done / s.progress_total) * 100) : 0;
-    const canRetry = ["FAILED", "ATTENTION", "CANCELLED"].includes(s.status);
+    // 待人处理的步骤给"通过"（人工环节的执行者是人），失败/取消的才给"重试"
+    const canApprove = s.status === "ATTENTION";
+    const canRetry = ["FAILED", "CANCELLED"].includes(s.status);
     tr.title = stepDesc(s);
     tr.innerHTML = `
       <td><div class="sname">${esc(stepLabel(s))}</div>
@@ -200,10 +202,15 @@ function renderSteps() {
       <td class="mono ${s.variant && s.variant !== "base" ? "att" : "dim"}">${esc(s.variant)}</td>
       <td class="num">${s.status === "RUNNING" ? p + "%" : s.status === "SUCCEEDED" || s.status === "CACHED" ? "100%" : "—"}</td>
       <td class="mono dim">${esc((s.output_digest || "").slice(0, 10))}</td>
-      <td>${canRetry ? `<button class="tiny ghost" data-step="${esc(s.step_name)}">重试</button>` : ""}</td>`;
+      <td>${canApprove ? `<button class="tiny" data-act="approve">通过</button>`
+                       : canRetry ? `<button class="tiny ghost" data-act="retry">重试</button>` : ""}</td>`;
     tr.querySelector("td:first-child").onclick = () => showAttempts(s.step_name);
-    const btn = tr.querySelector("button");
-    if (btn) btn.onclick = (e) => { e.stopPropagation(); retryStep(s.step_name); };
+    const b = tr.querySelector("button");
+    if (b) b.onclick = (e) => {
+      e.stopPropagation();
+      if (b.dataset.act === "approve") approveStep(s.step_name);
+      else retryStep(s.step_name);
+    };
     tb.appendChild(tr);
   }
 }
@@ -236,6 +243,17 @@ function showAttempts(stepName) {
           <td class="dim">${esc((a.observed_at || "").slice(11, 23))}</td>
         </tr>`).join("")}</tbody>
     </table>`;
+}
+
+async function approveStep(name) {
+  const r = await fetch(`/api/tasks/${state.selected}/steps/${name}/approve`, { method: "POST" });
+  if (!r.ok) {
+    let msg = `HTTP ${r.status}`;
+    try { const j = await r.json(); if (j.error) msg = j.error; } catch { /* 空响应 */ }
+    alert(`通过失败：${msg}`);
+    return;
+  }
+  await loadDetail();
 }
 
 async function retryStep(name) {

@@ -410,8 +410,11 @@ class Handler(BaseHTTPRequestHandler):
                 ok = scheduler.cancel_task(self.store, parts[2])
                 return self._json({"ok": ok}, 200 if ok else 409)
             if (len(parts) == 6 and parts[:2] == ["api", "tasks"]
-                    and parts[3] == "steps" and parts[5] == "retry"):
-                ok = scheduler.manual_retry(self.store, parts[2], parts[4])
+                    and parts[3] == "steps" and parts[5] in ("retry", "approve")):
+                if parts[5] == "approve":
+                    ok = scheduler.approve(self.store, parts[2], parts[4])
+                else:
+                    ok = scheduler.manual_retry(self.store, parts[2], parts[4])
                 return self._json({"ok": ok}, 200 if ok else 409)
             return self._err(404, "not found")
         except BrokenPipeError:

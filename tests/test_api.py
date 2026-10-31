@@ -154,6 +154,12 @@ class TestTaskLifecycle(APITestCase):
         self.assertIsNotNone(claim)
         self.assertEqual(claim["step_name"], "qc_review")
 
+    def test_approve_rejected_when_not_waiting(self):
+        tid = self.new_task("api_life7.mp4")
+        code, body = self.req("POST", f"/api/tasks/{tid}/steps/qc_review/approve")
+        self.assertEqual(code, 409, "只有停在 ATTENTION 的步骤才能被通过")
+        self.assertFalse(body["ok"])
+
     def test_cancel_marks_flag_and_cascades(self):
         tid = self.new_task("api_life5.mp4")
         code, body = self.req("POST", f"/api/tasks/{tid}/cancel")

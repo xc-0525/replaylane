@@ -77,6 +77,10 @@ def _build_params(args) -> dict:
     source = getattr(args, "source", None)
     if source:
         params["source"] = source
+    if getattr(args, "human_gate", False):
+        params["auto_approve"] = False
+    elif getattr(args, "auto_approve", False):
+        params["auto_approve"] = True
     seed = getattr(args, "seed", None)
     if seed is not None:
         params["nondet_seed"] = seed
@@ -107,6 +111,9 @@ def _apply_faults(specs, params: dict) -> None:
 def cmd_demo(args) -> int:
     store = _open(args)
     params = _build_params(args)
+    # 一键演示默认自动通过人工环节（否则会一直停在 ATTENTION 等超时）；
+    # 想看真正的闸门就加 --human-gate。
+    params.setdefault("auto_approve", not getattr(args, "human_gate", False))
     task_id = scheduler.submit(store, params)
     print(f"task {task_id} submitted (db={store.db_path})")
 
@@ -258,6 +265,8 @@ def main(argv=None) -> int:
                    help="注入故障，可重复；kill 写 STEP:kill:比例[:第几次]。"
                         "例：--fault matting:transient:2 --fault restyle:kill:0.45")
     d.add_argument("--source", default=None, help="素材名，换一个等于换一个新任务（不会命中上次的缓存）")
+    d.add_argument("--human-gate", action="store_true",
+                   help="人工环节真的停下来等人（默认自动通过，方便一键演示）")
     d.add_argument("--seed", type=int, default=None)
     d.set_defaults(func=cmd_demo)
 
@@ -275,6 +284,8 @@ def main(argv=None) -> int:
     sb.add_argument("--params-file", default=None)
     sb.add_argument("--fault", action="append", metavar="STEP:CLASS[:N]")
     sb.add_argument("--source", default=None)
+    sb.add_argument("--auto-approve", action="store_true",
+                    help="人工环节自动通过（默认会停在 ATTENTION 等人）")
     sb.add_argument("--seed", type=int, default=None)
     sb.add_argument("--priority", type=int, default=5)
     sb.set_defaults(func=cmd_submit)

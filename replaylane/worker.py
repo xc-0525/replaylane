@@ -132,6 +132,10 @@ class Worker:
 
     def run_one(self, claim: dict) -> str:
         step = STEP_BY_NAME[claim["step_name"]]
+        # 人工环节的执行者是人，不是这个进程。worker 能做的是"把活儿摆到人面前然后挂起"。
+        # params.auto_approve 只是给自动化测试/一键演示用的开关，默认关闭。
+        if step.idem == "human" and not claim["params"].get("auto_approve"):
+            return self._suspend(claim, step)
         stop, lost = self._start_heartbeat(claim)
         adopted = self._load_adopted(claim)
         deadline = (time.monotonic() + step.timeout_s) if step.timeout_s else None
@@ -179,6 +183,38 @@ class Worker:
 
         stop.set()
         return self._commit(claim, step, out)
+
+    # ---------------------------------------------------------- 人工挂起
+
+    def _suspend(self, claim: dict, step) -> str:
+        """把步骤挂到 ATTENTION 等人，然后干净地交出执行权。
+
+        这不是失败：attempt 记 SUSPENDED 而不是 FAILED，否则失败率统计会被
+        每一次正常的人工审核污染。
+        """
+        now = now_iso()
+        mono = int(time.monotonic() * 1000)
+        with self.store.tx() as c:
+            n = self.store.cas(
+                c,
+                "UPDATE step_run SET status='ATTENTION', blocked_reason='awaiting_human',"
+                " lease_id=NULL, last_progress_at=?"
+                " WHERE step_run_id=? AND lease_id=? AND fencing_token=? AND status='RUNNING'",
+                (now, claim["step_run_id"], claim["lease_id"], claim["fencing_token"]),
+            )
+            if n == 0:
+                return "rejected_stale"
+            c.execute("UPDATE lease SET closed_at=?, close_reason='suspended'"
+                      " WHERE lease_id=? AND closed_at IS NULL", (now, claim["lease_id"]))
+            c.execute("UPDATE attempt SET status='SUSPENDED', ended_at=?, ended_mono_ms=?"
+                      " WHERE attempt_id=?", (now, mono, claim["attempt_id"]))
+            self.store.event(c, "step.attention", task_id=claim["task_id"],
+                             step_run_id=claim["step_run_id"],
+                             attempt_id=claim["attempt_id"],
+                             payload={"step": step.name, "class": "awaiting_human",
+                                      "reason": "awaiting_human"})
+        gpu.release(self.store, claim["step_run_id"], "suspended")
+        return "awaiting_human"
 
     # ------------------------------------------------------------ 提交
 

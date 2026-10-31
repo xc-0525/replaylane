@@ -32,7 +32,7 @@ python -m replaylane.cli serve --port 8000     # 打开 http://localhost:8000
 ```bash
 python -m replaylane.cli serve --port 8000      # 服务 + 2 个 worker 子进程
 python -m replaylane.cli demo                   # 或者：命令行跑一个完整任务
-python -m unittest discover -s tests -t .       # 6 个测试文件 / 34 个用例，含 kill -9 恢复与接口路由
+python -m unittest discover -s tests -t .       # 7 个测试文件 / 37 个用例，含 kill -9 恢复、接口路由、人工闸门
 python -m replaylane.cli verify                 # 用事件重放校验投影是否一致
 ```
 
@@ -122,9 +122,12 @@ Step("restyle",            # 步骤名：风格化重绘
 `seed` 只在非确定性步骤里进 key，默认由参数哈希派生：**相同参数 → 相同 key → 全量  
 复用；换 seed → 从 `restyle` 开始重新生成**。
 
-**例外：人工环节永不命中缓存。** `qc_review`（`idem="human"`）每次都要重走——人看过并  
-通过是针对"这一次交付"的判断，不是输入的属性，复用等于让新交付免检。所以一个完全  
-相同的任务，是"7 步复用 + 1 步人工重走"，零算力但不等于零人工。
+**例外：人工环节永不命中缓存，而且会真的停下来。** `qc_review`（`idem="human"`）每次都要  
+重走——人看过并通过是针对"这一次交付"的判断，不是输入的属性，复用等于让新交付免检。  
+执行到这一步时 worker 会把它挂到 `ATTENTION`（attempt 记 `SUSPENDED`，**不是失败**，否则  
+失败率统计会被每一次正常审核污染），任务停在 RUNNING，直到人在看板上点「通过」——那一下  
+会记成一次 `human:<名字>` 的执行。所以一个完全相同的任务是"7 步复用 + 1 步人工重走"：  
+零算力，但不等于零人工。
 
 > 详见第 3 章（DSL、字段、四类复用策略、哪些步骤适合做独立可恢复任务的 5 条判据）。
 
@@ -179,7 +182,7 @@ Step("restyle",            # 步骤名：风格化重绘
 
 **① qc_review应该是人工审核在流程之外**
 
-在最开始直接将qc_review写入了流程中
+在最开始直接将qc_review写入了流程中，人工审核也会因为已经存在缓存直接跳过。但是人工审核不应该在整套流程内部。所以我将需要qc_review的都会在人工点等待人工审核通过再进行下一步
 
 **② 执行成功与缓存命中写出的 `output_digest` 不是一个口径（实现期）**  
 真跑成功时写的是产物 sha，命中缓存时写的是产物**集合**摘要。上游两条路径产生的  

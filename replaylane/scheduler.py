@@ -280,6 +280,42 @@ def project(store) -> int:
     return moved
 
 
+def approve(store, task_id: str, step_name: str, reviewer: str = "human") -> bool:
+    """人工通过。人工环节的"执行者"就是人，所以直接把结果记成成功，不再跑一遍。
+
+    记两条事件：step.approved 说明"谁批的"，step.succeeded 说明"变成了什么"——
+    只有前者的话，事件重放重建不出最终状态。
+    """
+    sr = store.q1("SELECT * FROM step_run WHERE task_id=? AND step_name=?", (task_id, step_name))
+    if sr is None or sr["status"] != "ATTENTION":
+        return False
+    now = now_iso()
+    mono = int(time.monotonic() * 1000)
+    with store.tx() as c:
+        n = store.cas(
+            c,
+            "UPDATE step_run SET status='SUCCEEDED', blocked_reason=NULL, error_class=NULL,"
+            " fencing_token=fencing_token+1, attempt_no=attempt_no+1,"
+            " output_digest=COALESCE(output_digest, ?), progress_done=1, progress_total=1,"
+            " last_progress_at=? WHERE step_run_id=? AND status='ATTENTION'",
+            (aggregate_digest([]), now, sr["step_run_id"]),
+        )
+        if not n:
+            return False
+        c.execute(
+            "INSERT INTO attempt(attempt_id, step_run_id, attempt_no, worker_id, status,"
+            " variant, started_at, started_mono_ms, ended_at, ended_mono_ms, exit_code)"
+            " VALUES(?,?,?,?,?,?,?,?,?,?,0)",
+            (new_id("A"), sr["step_run_id"], sr["attempt_no"] + 1, f"human:{reviewer}",
+             "SUCCEEDED", sr["variant"], now, mono, now, mono),
+        )
+        store.event(c, "step.approved", task_id=task_id, step_run_id=sr["step_run_id"],
+                    payload={"step": step_name, "by": reviewer})
+        store.event(c, "step.succeeded", task_id=task_id, step_run_id=sr["step_run_id"],
+                    payload={"step": step_name, "by": reviewer})
+    return True
+
+
 def tick(store) -> dict:
     return {
         "expanded": expand(store),
