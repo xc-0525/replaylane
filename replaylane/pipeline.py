@@ -32,6 +32,8 @@ class Step:
     timeout_s: int | None = None
     mock_seconds: float = 1.0  # 演示用：这个步骤大概跑多久
     shards: int = 0            # checkpoint 分片数（0 = 不分片）
+    label: str = ""            # 中文名，给看板和 README 用
+    desc: str = ""             # 一句话说明它到底在干什么
 
 
 # 动画素材处理管线。8 步，其中 restyle 是唯一非确定性步骤，占 60% 成本。
@@ -40,28 +42,36 @@ PIPELINE_VERSION = 3
 
 STEPS: tuple[Step, ...] = (
     Step("probe", (), cost=2, mock_seconds=0.6,
-         retry="fast", idem="det", timeout_s=60),
+         retry="fast", idem="det", timeout_s=60,
+         label="探测", desc="读视频元信息：时长、帧率、分辨率"),
     Step("shot_split", ("probe",), cost=50, mock_seconds=1.2,
-         retry="fast", idem="det", timeout_s=300),
+         retry="fast", idem="det", timeout_s=300,
+         label="分镜切分", desc="按镜头切换点把片子切成若干段"),
     Step("frames", ("probe",), cost=90, gpu_mb=2048, mock_seconds=2.0,
          retry="oom_aware", idem="det", checkpoint="per_shot",
-         timeout_s=1800, shards=8),
+         timeout_s=1800, shards=8,
+         label="抽帧", desc="把每一段解码成图像序列"),
     Step("matting", ("frames",), cost=600, gpu_mb=12288, mock_seconds=4.0,
          retry="oom_aware", idem="det", checkpoint="per_shot",
-         timeout_s=3600, shards=8),
+         timeout_s=3600, shards=8,
+         label="抠像", desc="把主体从背景里分离出来（Alpha 通道）"),
     Step("restyle", ("matting",), cost=1800, gpu_mb=20480, gpu_mode="exclusive",
          mock_seconds=9.0,
          # 非确定性 + 绝不重跑：重跑会得到另一批画面，且与已完成分片不同源。
          retry="never", idem="nondet", checkpoint="per_shot",
-         timeout_s=14400, shards=12),
+         timeout_s=14400, shards=12,
+         label="风格重绘", desc="逐镜头重绘成目标画风；非确定性，占 60% 成本"),
     Step("temporal", ("restyle",), cost=420, gpu_mb=8192, mock_seconds=3.0,
          # 跨镜头一致性校正：checkpoint 粒度不能小于它的依赖窗口，否则接缝闪烁。
          retry="fast", idem="det", checkpoint="per_shot",
-         timeout_s=3600, shards=4),
+         timeout_s=3600, shards=4,
+         label="时序校正", desc="消除跨帧闪烁与镜头接缝"),
     Step("encode", ("temporal", "shot_split"), cost=60, gpu_mb=1024,
-         mock_seconds=1.6, retry="fast", idem="det", timeout_s=1800),
+         mock_seconds=1.6, retry="fast", idem="det", timeout_s=1800,
+         label="转码", desc="把所有镜头编回一个视频文件"),
     Step("qc_review", ("encode",), cost=0, mock_seconds=0.0,
-         retry="never", idem="human", timeout_s=None),
+         retry="never", idem="human", timeout_s=None,
+         label="人工质检", desc="人看一眼成片，通过或打回（不消耗算力）"),
 )
 
 STEP_BY_NAME: dict[str, Step] = {s.name: s for s in STEPS}

@@ -92,6 +92,9 @@ async function loadDetail() {
   renderSteps();
 }
 
+const stepLabel = (s) => (s.spec && s.spec.label) || s.step_name;
+const stepDesc = (s) => (s.spec && s.spec.desc) || "";
+
 function renderGantt() {
   const segs = (state.timeline && state.timeline.segments) || [];
   const g = $("#gantt");
@@ -101,7 +104,9 @@ function renderGantt() {
 
   for (const st of state.steps) {
     const row = el("div", "grow");
-    row.appendChild(el("div", "glabel", esc(st.step_name)));
+    const lab = el("div", "glabel", esc(stepLabel(st)));
+    lab.title = `${st.step_name} · ${stepDesc(st)}`;
+    row.appendChild(lab);
     const track = el("div", "gtrack");
     const mine = segs.filter((s) => s.step === st.step_name);
     for (const s of mine) {
@@ -138,8 +143,10 @@ function renderSteps() {
     const tr = el("tr");
     const p = s.progress_total ? Math.round((s.progress_done / s.progress_total) * 100) : 0;
     const canRetry = ["FAILED", "ATTENTION", "CANCELLED"].includes(s.status);
+    tr.title = stepDesc(s);
     tr.innerHTML = `
-      <td class="mono">${esc(s.step_name)}</td>
+      <td><div class="sname">${esc(stepLabel(s))}</div>
+          <div class="sen">${esc(s.step_name)}</div></td>
       <td><span class="st ${esc(s.status)}">${esc(s.status)}</span></td>
       <td class="num">${s.attempt_no}</td>
       <td class="num">${s.fencing_token}</td>

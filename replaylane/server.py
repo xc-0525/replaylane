@@ -212,7 +212,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({
                     "pipeline": PIPELINE_NAME, "total_cost": TOTAL_COST,
                     "defaults": DEFAULT_PARAMS,
-                    "steps": [{"name": s.name, "deps": list(s.deps), "cost": s.cost,
+                    "steps": [{"name": s.name, "label": s.label, "desc": s.desc,
+                               "deps": list(s.deps), "cost": s.cost,
                                "gpu_mb": s.gpu_mb, "retry": s.retry, "idem": s.idem,
                                "checkpoint": s.checkpoint} for s in STEPS],
                 })
