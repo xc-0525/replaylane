@@ -289,7 +289,8 @@ class Handler(BaseHTTPRequestHandler):
                 "SELECT * FROM step_run WHERE task_id=? ORDER BY rowid", (task_id,))]
             for s in steps:
                 s["spec"] = dict(STEP_BY_NAME[s["step_name"]].__dict__)
-            return self._json({"task": {**dict(t), "progress": task_progress(self.store, task_id)},
+            return self._json({"task": {**dict(t), "progress": task_progress(self.store, task_id),
+                                        "params": loads(t["params_json"], {})},
                                "steps": steps})
 
         if rest == ["events"]:

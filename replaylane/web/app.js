@@ -83,7 +83,7 @@ async function loadDetail() {
 
   $("#detail-empty").style.display = "none";
   $("#detail-body").style.display = "block";
-  renderNotice(detail.steps);
+  renderNotice(detail);
   const t = detail.task;
   $("#detail-id").innerHTML =
     `<span class="st ${esc(t.status)}">${esc(t.status)}</span>
@@ -96,11 +96,27 @@ async function loadDetail() {
 const stepLabel = (s) => (s.spec && s.spec.label) || s.step_name;
 const stepDesc = (s) => (s.spec && s.spec.desc) || "";
 
-function renderNotice(steps) {
+function renderNotice(detail) {
   const box = $("#notice");
+  const steps = detail.steps || [];
   const cached = steps.filter((s) => s.status === "CACHED").length;
   const total = steps.length;
   const executed = steps.filter((s) => s.status !== "CACHED" && s.status !== "BLOCKED").length;
+  const faults = (detail.task && detail.task.params && detail.task.params.faults) || {};
+
+  // 最容易被误解的一种情况：给某一步注入了故障，但这一步命中了缓存、
+  // 根本没执行——故障自然没机会触发。不说清楚，用户会以为故障注入坏了。
+  const missed = Object.keys(faults).filter((n) =>
+    steps.some((s) => s.step_name === n && s.status === "CACHED"));
+  if (missed.length) {
+    box.style.display = "flex";
+    box.className = "notice warn";
+    box.innerHTML = `<b>故障没有生效</b>
+      <span>${esc(missed.join("、"))} 命中了缓存，这一步没有执行，注入的故障也就没机会触发。
+      换个素材名或风格（改变输入 → 改变指纹）它才会真的跑起来。</span>`;
+    return;
+  }
+
   if (cached === total) {
     // 零执行的任务在甘特上是空的，不解释一句会让人以为系统没反应
     box.style.display = "flex";

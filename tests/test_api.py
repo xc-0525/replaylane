@@ -111,6 +111,8 @@ class TestTaskLifecycle(APITestCase):
         code, body = self.req("GET", f"/api/tasks/{tid}")
         self.assertEqual(code, 200)
         self.assertEqual(body["task"]["status"], "QUEUED")
+        # 详情要带解析后的 params，前端靠它判断"注入的故障有没有真的执行到"
+        self.assertEqual(body["task"]["params"]["source"], "api_life1.mp4")
         self.assertEqual(len(body["steps"]), 8)
         self.assertTrue(all(s["status"] == "BLOCKED" for s in body["steps"]))
 

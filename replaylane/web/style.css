@@ -193,7 +193,9 @@ ul.events .ty.ok { color: var(--ok); }
   border-bottom: 1px solid var(--line);
 }
 .notice.ok { background: #eafaf4; color: #085041; border-bottom-color: #9fe1cb; }
+.notice.warn { background: #fdf4e5; color: #854f0b; border-bottom-color: #f5c4b3; }
 .notice b { font-weight: 600; white-space: nowrap; }
 .notice span { color: #0f6e56; }
+.notice.warn span { color: #8a5a17; }
 .stack { display: grid; gap: 14px; }
 .hint { font-size: 11px; color: var(--muted); padding: 0 14px 12px; }
