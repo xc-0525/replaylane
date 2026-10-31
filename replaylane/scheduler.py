@@ -121,7 +121,9 @@ def resolve(store) -> int:
         " WHERE sr.status='READY' AND t.status IN ('QUEUED','RUNNING')")
     for r in rows:
         s = STEP_BY_NAME[r["step_name"]]
-        shas = _cache_hit(store, r["step_key"])
+        # 人工步骤不参与缓存：人看过并通过，是针对"这一次交付"的判断，
+        # 不是"这个输入"的属性。复用一次人工通过，等于让新交付免检。
+        shas = None if s.idem == "human" else _cache_hit(store, r["step_key"])
         if shas:
             with store.tx() as c:
                 n = store.cas(

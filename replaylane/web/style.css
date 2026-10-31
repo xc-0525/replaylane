@@ -155,8 +155,18 @@ ul.tasks li.active { background: #eef4ff; border-color: #c7d8fb; }
   background: repeating-linear-gradient(45deg, #f09595, #f09595 3px, #fcebeb 3px, #fcebeb 6px);
 }
 .gmark { position: absolute; top: -2px; width: 3px; height: 18px; border-radius: 1px; }
-.gmark.failed { background: var(--failed); }
+/* 零时长的事件画成竖标。每种类型都必须有颜色，否则"命中缓存"会画成一片空白 */
+.gmark.ready { background: var(--ready); }
+.gmark.queued { background: var(--queued); }
+.gmark.running { background: var(--running); }
+.gmark.backoff { background: var(--backoff); }
+.gmark.attention { background: var(--attention); }
+.gmark.cached { background: var(--cached); width: 4px; }
+.gmark.ok { background: var(--ok); width: 4px; }
+.gmark.failed { background: var(--failed); width: 4px; }
 .gmark.cancelled { background: var(--cancelled); }
+.gmark.degraded { background: #ef9f27; width: 4px; }
+.gmark.dead { background: #f09595; width: 4px; }
 .axis { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px; margin-top: 4px; }
 .axis .ticks { display: flex; justify-content: space-between; font: 10px var(--mono); color: var(--muted); }
 .legend { display: flex; gap: 12px; flex-wrap: wrap; padding: 8px 14px 12px; font-size: 11px; color: var(--muted); }

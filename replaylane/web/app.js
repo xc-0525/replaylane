@@ -101,8 +101,11 @@ function renderNotice(detail) {
   const steps = detail.steps || [];
   const cached = steps.filter((s) => s.status === "CACHED").length;
   const total = steps.length;
-  const executed = steps.filter((s) => s.status !== "CACHED" && s.status !== "BLOCKED").length;
   const faults = (detail.task && detail.task.params && detail.task.params.faults) || {};
+  // 只统计"会烧算力"的步骤：人工审核那步成本是 0，它重跑不算执行
+  const costly = steps.filter((s) => s.spec && s.spec.cost > 0);
+  const costlyRan = costly.filter((s) => s.status !== "CACHED" && s.attempt_no > 0).length;
+  const manual = total - costly.length;
 
   // 最容易被误解的一种情况：给某一步注入了故障，但这一步命中了缓存、
   // 根本没执行——故障自然没机会触发。不说清楚，用户会以为故障注入坏了。
@@ -117,17 +120,17 @@ function renderNotice(detail) {
     return;
   }
 
-  if (cached === total) {
-    // 零执行的任务在甘特上是空的，不解释一句会让人以为系统没反应
+  if (costlyRan === 0 && cached > 0) {
     box.style.display = "flex";
     box.className = "notice ok";
-    box.innerHTML = `<b>全部 ${total} 步命中缓存</b>
-      <span>这次没有执行任何计算，产物直接复用（0 秒完成）。想看到执行过程：换个素材名、换个风格或 seed，或者勾选一个故障注入。</span>`;
+    box.innerHTML = `<b>没有消耗算力</b>
+      <span>${cached} 步直接复用上次的产物${manual ? `，${manual} 步人工环节仍然重走了一遍（人工判断不可复用）` : ""}。
+      想看到完整执行过程：换个素材名、换个风格或 seed，或者勾选一个故障注入。</span>`;
   } else if (cached > 0) {
     box.style.display = "flex";
     box.className = "notice ok";
     box.innerHTML = `<b>${cached} 步命中缓存</b>
-      <span>其余 ${executed} 步实际执行。绿色 CACHED 的步骤没有消耗算力。</span>`;
+      <span>其余 ${total - cached} 步实际执行。绿色 CACHED 的步骤没有消耗算力。</span>`;
   } else {
     box.style.display = "none";
   }

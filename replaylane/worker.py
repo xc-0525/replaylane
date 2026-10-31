@@ -203,8 +203,12 @@ class Worker:
                 return "rejected_stale"      # 断言 A2 的现场：僵尸提交被挡
             c.execute("INSERT OR IGNORE INTO artifact_ref(step_run_id, task_id, sha256)"
                       " VALUES(?,?,?)", (claim["step_run_id"], claim["task_id"], sha))
-            c.execute("INSERT OR REPLACE INTO step_cache(step_key, sha256, step_name, created_at)"
-                      " VALUES(?,?,?,?)", (claim["step_key"], sha, step.name, now_iso()))
+            if step.idem != "human":
+                # 人工步骤不写缓存索引：否则这条索引行永远是死数据，
+                # 还会让 GC 误以为产物有人引用。
+                c.execute("INSERT OR REPLACE INTO step_cache(step_key, sha256, step_name,"
+                          " created_at) VALUES(?,?,?,?)",
+                          (claim["step_key"], sha, step.name, now_iso()))
             c.execute("UPDATE artifact SET last_access_at=? WHERE sha256=?", (now_iso(), sha))
             c.execute("UPDATE lease SET closed_at=?, close_reason='committed'"
                       " WHERE lease_id=? AND closed_at IS NULL", (now_iso(), claim["lease_id"]))
