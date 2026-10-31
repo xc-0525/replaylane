@@ -45,11 +45,68 @@ def _progress(store, task_id: str) -> int:
     return pct
 
 
+def _json_or_die(text: str) -> dict:
+    """JSON 解析失败时给一句人话，而不是甩一个 traceback。
+
+    最常见的触发原因：PowerShell 调原生程序时会把参数里的双引号吞掉，
+    于是 `'{"a":1}'` 到 python 手里变成 `{a:1}`。
+    """
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise SystemExit(
+            f"--params 不是合法 JSON（{exc.msg}，第 {exc.pos} 个字符）。\n"
+            "  最常见的原因：PowerShell 会吞掉参数里的双引号。三个办法：\n"
+            "    1) 不用 JSON，直接写：--fault matting:transient:2\n"
+            "    2) 把 JSON 存成文件：--params-file params.json\n"
+            "    3) 用 cmd 而不是 PowerShell，或把双引号写成 \\\"\n"
+        )
+
+
+def _build_params(args) -> dict:
+    """把 --params-file / --params / --fault 合成一个 dict。"""
+    params: dict = {}
+    pf = getattr(args, "params_file", None)
+    if pf:
+        with open(pf, "r", encoding="utf-8") as f:
+            params.update(json.load(f))
+    raw = getattr(args, "params", None)
+    if raw:
+        params.update(_json_or_die(raw))
+    _apply_faults(getattr(args, "fault", None), params)
+    source = getattr(args, "source", None)
+    if source:
+        params["source"] = source
+    seed = getattr(args, "seed", None)
+    if seed is not None:
+        params["nondet_seed"] = seed
+    return params
+
+
+def _apply_faults(specs, params: dict) -> None:
+    """--fault step:class[:times]，kill 用 --fault step:kill:at[:attempt]。
+
+    例：--fault matting:transient:2 --fault restyle:kill:0.45
+    """
+    if not specs:
+        return
+    faults = params.setdefault("faults", {})
+    for raw in specs:
+        parts = raw.split(":")
+        step = parts[0]
+        kind = parts[1] if len(parts) > 1 else "transient"
+        if kind == "kill":
+            at = float(parts[2]) if len(parts) > 2 else 0.45
+            attempt = int(parts[3]) if len(parts) > 3 else 1
+            faults[step] = {"kill_at": at, "kill_on_attempt": attempt}
+        else:
+            times = int(parts[2]) if len(parts) > 2 else 1
+            faults[step] = {"fail_times": times, "class": kind}
+
+
 def cmd_demo(args) -> int:
     store = _open(args)
-    params = json.loads(args.params) if args.params else {}
-    if args.seed is not None:
-        params["nondet_seed"] = args.seed
+    params = _build_params(args)
     task_id = scheduler.submit(store, params)
     print(f"task {task_id} submitted (db={store.db_path})")
 
@@ -150,7 +207,7 @@ def cmd_status(args) -> int:
 
 def cmd_submit(args) -> int:
     store = _open(args)
-    params = json.loads(args.params) if args.params else {}
+    params = _build_params(args)
     print(scheduler.submit(store, params, priority=args.priority))
     return 0
 
@@ -195,7 +252,12 @@ def main(argv=None) -> int:
     d = sub.add_parser("demo", help="一键演示")
     d.add_argument("--workers", type=int, default=2)
     d.add_argument("--timeout", type=float, default=120)
-    d.add_argument("--params", default=None)
+    d.add_argument("--params", default=None, help="JSON 字符串（PowerShell 下注意引号）")
+    d.add_argument("--params-file", default=None, help="JSON 文件路径，避免命令行引号问题")
+    d.add_argument("--fault", action="append", metavar="STEP:CLASS[:N]",
+                   help="注入故障，可重复；kill 写 STEP:kill:比例[:第几次]。"
+                        "例：--fault matting:transient:2 --fault restyle:kill:0.45")
+    d.add_argument("--source", default=None, help="素材名，换一个等于换一个新任务（不会命中上次的缓存）")
     d.add_argument("--seed", type=int, default=None)
     d.set_defaults(func=cmd_demo)
 
@@ -210,6 +272,10 @@ def main(argv=None) -> int:
 
     sb = sub.add_parser("submit")
     sb.add_argument("--params", default=None)
+    sb.add_argument("--params-file", default=None)
+    sb.add_argument("--fault", action="append", metavar="STEP:CLASS[:N]")
+    sb.add_argument("--source", default=None)
+    sb.add_argument("--seed", type=int, default=None)
     sb.add_argument("--priority", type=int, default=5)
     sb.set_defaults(func=cmd_submit)
 

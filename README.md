@@ -41,6 +41,26 @@ python -m replaylane.cli verify                 # 用事件重放校验投影是
 要求 Python ≥ 3.10（用到 SQLite 3.35+ 的 `UPDATE … RETURNING`，启动时会断言）。  
 看板上可以直接注入四类故障：可重试失败、OOM 降级、`kill -9`、人工介入。
 
+**想看故障注入**——每个命令换一个 `--source`，否则会命中上一次的缓存、0 秒跑完：
+
+```bash
+# 同一道工序连续失败两次再成功：重试 + 指数退避
+python -m replaylane.cli demo --source a1.mp4 --fault matting:transient:2
+
+# 显存不足：不是重试，是换更省显存的跑法（variant 变 bs_half）
+python -m replaylane.cli demo --source a2.mp4 --fault matting:oom:1
+
+# 跑到 45% 时把进程 kill -9：注意日志里"第 1 次"那行根本不存在
+python -m replaylane.cli demo --source a3.mp4 --fault restyle:kill:0.45
+
+# 对照组：restyle 的重试白名单是空的，同样的故障直接失败、下游全取消
+python -m replaylane.cli demo --source a4.mp4 --fault restyle:transient:1
+```
+
+`--fault` 格式：`步骤:故障类别[:次数]`，kill 写成 `步骤:kill:比例[:第几次]`，可重复多次。
+**命令行不需要写 JSON**——PowerShell 会吞掉 JSON 里的双引号，所以专门留了这套参数
+（仍支持 `--params '<json>'` 与 `--params-file x.json`）。
+
 ---
 
 ## 1. 实现方式与时间规划
